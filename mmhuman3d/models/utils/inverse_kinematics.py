@@ -170,7 +170,7 @@ def batch_inverse_kinematics_transform(pose_skeleton,
 
                 diff = torch.norm(
                     child_final_loc - orig_vec, dim=1, keepdim=True)
-                big_diff_idx = torch.where(diff > 15 / 1000)[0]
+                big_diff_idx = torch.where(diff > 0)[0]
 
                 child_final_loc[big_diff_idx] = orig_vec[big_diff_idx]
 

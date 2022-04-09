@@ -1,20 +1,20 @@
-_base_ = ['../_base_/default_runtime.py']
+_base_ = ['../../configs/_base_/default_runtime.py']
 
 # evaluate
-evaluation = dict(metric=['pa-mpjpe', 'mpjpe'])
+evaluation = dict(
+    interval=1, metric='joint_error', out_dir='s3://sunqingping/')
+checkpoint_config = dict(interval=1, out_dir='s3://sunqingping/')
 # optimizer
 optimizer = dict(type='Adam', lr=1e-3, weight_decay=0)
 optimizer_config = dict(grad_clip=None)
 # learning policy
-lr_config = dict(policy='step', step=[180, 240])
+lr_config = dict(policy='step', step=[200, 300])
 runner = dict(type='EpochBasedRunner', max_epochs=400)
 
 log_config = dict(
     interval=50,
-    hooks=[
-        dict(type='TextLoggerHook'),
-        #    dict(type='TensorboardLoggerHook')
-    ])
+    hooks=[dict(type='TextLoggerHook'),
+           dict(type='TensorboardLoggerHook')])
 
 img_res = 256
 
@@ -26,6 +26,7 @@ model = dict(
         depth=34,
         out_indices=[3],
         norm_eval=False,
+        norm_cfg=dict(type='SyncBN', requires_grad=True),
         init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet34')),
     head=dict(
         type='HybrIKHead',
@@ -36,7 +37,7 @@ model = dict(
         'data/body_models/smpl',
         extra_joints_regressor='data/body_models/J_regressor_h36m.npy'),
     loss_beta=dict(type='MSELoss', loss_weight=1),
-    loss_theta=dict(type='MSELoss', loss_weight=0.01),
+    loss_theta=dict(type='MSELoss', loss_weight=0.2),
     loss_twist=dict(type='MSELoss', loss_weight=0.2),
     loss_uvd=dict(type='L1Loss', loss_weight=1),
 )
@@ -86,16 +87,25 @@ keypoints_maps = [
         keypoints_index=hybrik29_idxs),
 ]
 
+file_client_args = dict(
+    backend='petrel',
+    path_mapping=dict({
+        'data/datasets/coco/': 's3://Zoetrope/OpenHuman/coco/',
+        'data/datasets/h36m/': 's3://Zoetrope/OpenHuman/human3.6m/',
+        'data/datasets/mpi_inf_3dhp/': 's3://Zoetrope/OpenHuman/mpi_inf_3dhp/',
+        'data/datasets/pw3d/': 's3://Zoetrope/OpenHuman/3DPW/',
+    }))
+
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
+    dict(type='LoadImageFromFile', file_client_args=file_client_args),
     dict(type='RandomDPG', dpg_prob=0.9),
-    dict(type='GetRandomScaleRotation', rot_factor=30, scale_factor=0.25),
-    dict(type='RandomOcclusion', occlusion_prob=0.9),
+    dict(type='GetRandomScaleRotation', rot_factor=30, scale_factor=0.3),
+    dict(type='RandomOcclusion', occlusion_prob=0.5),
     dict(type='HybrIKRandomFlip', flip_prob=0.5, flip_pairs=flip_pairs),
     dict(type='NewKeypointsSelection', maps=keypoints_maps),
     dict(type='HybrIKAffine', img_res=256),
     dict(type='GenerateHybrIKTarget', img_res=256, test_mode=False),
-    dict(type='RandomChannelNoise', noise_factor=0.4),
+    dict(type='RandomChannelNoise', noise_factor=0.2),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='ImageToTensor', keys=['img']),
     dict(type='ToTensor', keys=data_keys),
@@ -106,7 +116,7 @@ train_pipeline = [
 ]
 
 test_pipeline = [
-    dict(type='LoadImageFromFile'),
+    dict(type='LoadImageFromFile', file_client_args=file_client_args),
     dict(type='NewKeypointsSelection', maps=keypoints_maps),
     dict(type='HybrIKAffine', img_res=256),
     dict(type='GenerateHybrIKTarget', img_res=256, test_mode=True),
@@ -128,7 +138,7 @@ hp3d_keypoints_map = [
 ]
 
 test_hp3d_pipeline = [
-    dict(type='LoadImageFromFile'),
+    dict(type='LoadImageFromFile', file_client_args=file_client_args),
     dict(type='NewKeypointsSelection', maps=hp3d_keypoints_map),
     dict(type='HybrIKAffine', img_res=256),
     dict(type='GenerateHybrIKTarget', img_res=256, test_mode=True),
@@ -168,16 +178,12 @@ data = dict(
         partition=[0.4, 0.1, 0.5]),
     test=dict(
         type=dataset_type,
-        body_model=dict(
-            type='GenderedSMPL', model_path='data/body_models/smpl'),
         dataset_name='pw3d',
         data_prefix='data',
         pipeline=test_pipeline,
         ann_file='hybrik_pw3d_test.npz'),
     val=dict(
         type=dataset_type,
-        body_model=dict(
-            type='GenderedSMPL', model_path='data/body_models/smpl'),
         dataset_name='pw3d',
         data_prefix='data',
         pipeline=test_pipeline,
