@@ -285,8 +285,8 @@ class HybrIKHumanImageDataset(BaseDataset, metaclass=ABCMeta):
         """Parse results."""
         gts = self.data_infos
         if mode == 'vertice':
-            pred_pose = torch.FloatTensor(res['poses'])
-            pred_beta = torch.FloatTensor(res['betas'])
+            pred_pose = torch.FloatTensor(np.array(res['poses']))
+            pred_beta = torch.FloatTensor(np.array(res['betas']))
             pred_output = self.body_model(
                 betas=pred_beta,
                 body_pose=pred_pose[:, 1:],
@@ -294,9 +294,9 @@ class HybrIKHumanImageDataset(BaseDataset, metaclass=ABCMeta):
                 pose2rot=False)
             pred_vertices = pred_output['vertices'].detach().cpu().numpy()
 
-            gt_pose = torch.FloatTensor([gt['pose']
-                                         for gt in gts]).view(-1, 72)
-            gt_beta = torch.FloatTensor([gt['beta'] for gt in gts])
+            gt_pose = torch.FloatTensor(np.array([gt['pose'] for gt in gts
+                                                  ])).view(-1, 72)
+            gt_beta = torch.FloatTensor(np.array([gt['beta'] for gt in gts]))
             gt_output = self.body_model(
                 betas=gt_beta,
                 body_pose=gt_pose[:, 3:],
