@@ -181,8 +181,8 @@ kinect_images = smc_reader.get_color(device='Kinect', device_id=0)
 iphone_images = smc_reader.get_color(device='iPhone', device_id=0, vertical=True)
 
 # Get depth maps
-kinect_depth = smc_reader.get_kinect_depth(device='Kinect', device_id=0)
-iphone_depth = smc_reader.get_iphone_depth(device='iPhone', device_id=0)
+kinect_depth = smc_reader.get_kinect_depth(kinect_id=0)
+iphone_depth = smc_reader.get_iphone_depth(iphone_id=0)
 
 # Get 2D keypoints
 iphone_keypoints2d = smc_reader.get_keypoints2d(device='Kinect', device_id=0)
